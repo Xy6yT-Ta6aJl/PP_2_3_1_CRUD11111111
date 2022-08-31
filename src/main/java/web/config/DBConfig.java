@@ -1,6 +1,5 @@
 package web.config;
 
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -10,35 +9,28 @@ import org.springframework.core.env.Environment;
 import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.JpaVendorAdapter;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaDialect;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import javax.persistence.Persistence;
 import javax.sql.DataSource;
 import java.util.Properties;
 
 @Configuration
-@PropertySource("classpath:db.properties")
+@PropertySource(value = "classpath:db.properties")
+@ComponentScan(basePackages = "web")
 @EnableTransactionManagement
-@ComponentScan(value = "web")
 public class DBConfig {
 
     private Environment environment;
 
-
     @Autowired
-    public DBConfig(Environment environment) {
+    public void setEnvironment(Environment environment) {
         this.environment = environment;
-    }
-
-    private Properties properties() {
-        Properties properties = new Properties();
-        properties.put("hibernate.show_sql", environment.getRequiredProperty("hibernate.show_sql"));
-        properties.put("hibernate.hbm2ddl.auto", environment.getRequiredProperty("hibernate.hbm2ddl.auto"));
-        properties.put("hibernate.dialect", environment.getRequiredProperty("hibernate.dialect"));
-        return properties;
     }
 
     @Bean
@@ -52,20 +44,28 @@ public class DBConfig {
     }
 
     @Bean
-    LocalContainerEntityManagerFactoryBean entityManagerFactoryBean() {
-        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
-        entityManagerFactoryBean.setDataSource(dataSource());
-        entityManagerFactoryBean.setJpaDialect(new HibernateJpaDialect());
-        entityManagerFactoryBean.setPackagesToScan("db.entity.package");
-        entityManagerFactoryBean.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        entityManagerFactoryBean.setJpaProperties(properties());
-        return entityManagerFactoryBean;
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean emb = new LocalContainerEntityManagerFactoryBean();
+        emb.setDataSource(dataSource());
+        emb.setJpaDialect(new HibernateJpaDialect());
+        emb.setPackagesToScan(environment.getRequiredProperty("db.entity.package"));
+        emb.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        emb.setJpaProperties(properties());
+        return emb;
+    }
+
+    private Properties properties() {
+        Properties props = new Properties();
+        props.put("hibernate.show_sql", environment.getRequiredProperty("hibernate.show_sql"));
+        props.put("hibernate.hbm2ddl.auto", environment.getRequiredProperty("hibernate.hbm2ddl.auto"));
+        props.put("hibernate.dialect", environment.getRequiredProperty("hibernate.dialect"));
+        return props;
     }
 
     @Bean
-    PlatformTransactionManager transactionManager() {
+    public PlatformTransactionManager transactionManager() {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactoryBean().getObject());
+        transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
         return transactionManager;
     }
 
@@ -75,4 +75,3 @@ public class DBConfig {
     }
 
 }
-
